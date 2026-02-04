@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { getStockPrice, formatCurrency, popularStocks } from '../utils/stockData';
+import React, { useState, useEffect } from 'react';
+import { getStockPrice, fetchStockQuote, formatCurrency, popularStocks } from '../utils/stockData';
 import './Portfolio.css';
 
 function Portfolio({ portfolio, setPortfolio }) {
@@ -8,8 +8,39 @@ function Portfolio({ portfolio, setPortfolio }) {
   const [shares, setShares] = useState('');
   const [purchasePrice, setPurchasePrice] = useState('');
   const [error, setError] = useState('');
+  const [livePrices, setLivePrices] = useState({});
+  const [loading, setLoading] = useState(false);
 
-  const handleAddStock = (e) => {
+  // Fetch live prices when portfolio changes
+  useEffect(() => {
+    if (portfolio.length === 0) return;
+
+    const fetchLivePrices = async () => {
+      setLoading(true);
+      const prices = {};
+
+      for (const stock of portfolio) {
+        try {
+          const data = await fetchStockQuote(stock.symbol);
+          prices[stock.symbol.toUpperCase()] = data;
+        } catch (err) {
+          console.warn(`Failed to fetch ${stock.symbol}:`, err);
+          prices[stock.symbol.toUpperCase()] = getStockPrice(stock.symbol);
+        }
+      }
+
+      setLivePrices(prices);
+      setLoading(false);
+    };
+
+    fetchLivePrices();
+
+    // Refresh prices every 60 seconds
+    const interval = setInterval(fetchLivePrices, 60000);
+    return () => clearInterval(interval);
+  }, [portfolio.length]);
+
+  const handleAddStock = async (e) => {
     e.preventDefault();
     setError('');
 
@@ -51,24 +82,49 @@ function Portfolio({ portfolio, setPortfolio }) {
     setShares('');
     setPurchasePrice('');
     setShowAddForm(false);
+
+    // Fetch live price for the new stock
+    try {
+      const data = await fetchStockQuote(upperSymbol);
+      setLivePrices(prev => ({ ...prev, [upperSymbol]: data }));
+    } catch (err) {
+      console.warn(`Failed to fetch ${upperSymbol}:`, err);
+    }
   };
 
   const handleRemoveStock = (id) => {
     setPortfolio(portfolio.filter(s => s.id !== id));
   };
 
-  const handleQuickAdd = (stockSymbol) => {
-    const price = getStockPrice(stockSymbol);
-    setSymbol(stockSymbol);
-    setPurchasePrice(price.current.toString());
-    setShares('10');
-    setShowAddForm(true);
+  const handleQuickAdd = async (stockSymbol) => {
+    // Fetch live price for quick add
+    try {
+      const price = await fetchStockQuote(stockSymbol);
+      setSymbol(stockSymbol);
+      setPurchasePrice(price.current.toString());
+      setShares('10');
+      setShowAddForm(true);
+    } catch (err) {
+      const price = getStockPrice(stockSymbol);
+      setSymbol(stockSymbol);
+      setPurchasePrice(price.current.toString());
+      setShares('10');
+      setShowAddForm(true);
+    }
+  };
+
+  const getPrice = (symbol) => {
+    const upperSymbol = symbol.toUpperCase();
+    return livePrices[upperSymbol] || getStockPrice(symbol);
   };
 
   return (
     <div className="portfolio-section">
       <div className="portfolio-header">
-        <h2 className="section-title">YOUR PORTFOLIO</h2>
+        <div>
+          <h2 className="section-title">YOUR PORTFOLIO</h2>
+          {loading && <span className="loading-indicator">Fetching live prices...</span>}
+        </div>
         <button
           className="btn btn-primary"
           onClick={() => setShowAddForm(!showAddForm)}
@@ -160,17 +216,22 @@ function Portfolio({ portfolio, setPortfolio }) {
       ) : (
         <div className="portfolio-grid">
           {portfolio.map(stock => {
-            const stockInfo = getStockPrice(stock.symbol);
+            const stockInfo = getPrice(stock.symbol);
             const currentValue = stockInfo.current * stock.shares;
             const costBasis = stock.purchasePrice * stock.shares;
             const gainLoss = currentValue - costBasis;
             const gainLossPercent = ((currentValue - costBasis) / costBasis) * 100;
             const isPositive = gainLoss >= 0;
+            const dayChange = stockInfo.change || 0;
+            const dayChangePercent = stockInfo.changePercent || 0;
 
             return (
               <div key={stock.id} className="stock-card card card-hover">
                 <div className="stock-header">
-                  <div className="stock-symbol">{stock.symbol}</div>
+                  <div className="stock-symbol">
+                    {stock.symbol}
+                    {stockInfo.isLive && <span className="live-badge">LIVE</span>}
+                  </div>
                   <button
                     className="remove-btn"
                     onClick={() => handleRemoveStock(stock.id)}
@@ -192,7 +253,14 @@ function Portfolio({ portfolio, setPortfolio }) {
                   </div>
                   <div className="stock-row">
                     <span className="stock-label">Current Price</span>
-                    <span className="stock-value">{formatCurrency(stockInfo.current)}</span>
+                    <span className="stock-value">
+                      {formatCurrency(stockInfo.current)}
+                      {dayChange !== 0 && (
+                        <span className={`day-change ${dayChange >= 0 ? 'positive' : 'negative'}`}>
+                          {' '}({dayChange >= 0 ? '+' : ''}{dayChangePercent.toFixed(2)}%)
+                        </span>
+                      )}
+                    </span>
                   </div>
                 </div>
 
