@@ -1,5 +1,12 @@
-import React, { useState, useEffect } from 'react';
-import { getStockPrice, fetchStockQuote, formatCurrency, popularStocks } from '../utils/stockData';
+import React, { useState, useEffect, useRef } from 'react';
+import {
+  getStockPrice,
+  fetchStockQuote,
+  fetchHistoricalPrices,
+  searchStocks,
+  formatCurrency,
+  popularStocks
+} from '../utils/stockData';
 import './Portfolio.css';
 
 function Portfolio({ portfolio, setPortfolio }) {
@@ -10,6 +17,27 @@ function Portfolio({ portfolio, setPortfolio }) {
   const [error, setError] = useState('');
   const [livePrices, setLivePrices] = useState({});
   const [loading, setLoading] = useState(false);
+
+  // New states for search and history
+  const [searchResults, setSearchResults] = useState([]);
+  const [showSuggestions, setShowSuggestions] = useState(false);
+  const [selectedStock, setSelectedStock] = useState(null);
+  const [priceHistory, setPriceHistory] = useState(null);
+  const [loadingHistory, setLoadingHistory] = useState(false);
+
+  const searchRef = useRef(null);
+
+  // Close suggestions when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (searchRef.current && !searchRef.current.contains(event.target)) {
+        setShowSuggestions(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
 
   // Fetch live prices when portfolio changes
   useEffect(() => {
@@ -35,10 +63,49 @@ function Portfolio({ portfolio, setPortfolio }) {
 
     fetchLivePrices();
 
-    // Refresh prices every 60 seconds
     const interval = setInterval(fetchLivePrices, 60000);
     return () => clearInterval(interval);
   }, [portfolio.length]);
+
+  // Search stocks when symbol changes
+  useEffect(() => {
+    if (symbol.length >= 1) {
+      const results = searchStocks(symbol);
+      setSearchResults(results);
+      setShowSuggestions(results.length > 0);
+    } else {
+      setSearchResults([]);
+      setShowSuggestions(false);
+    }
+  }, [symbol]);
+
+  // Handle stock selection from suggestions
+  const handleSelectStock = async (stock) => {
+    setSymbol(stock.symbol);
+    setSelectedStock(stock);
+    setShowSuggestions(false);
+    setLoadingHistory(true);
+    setPriceHistory(null);
+
+    try {
+      const history = await fetchHistoricalPrices(stock.symbol, 30);
+      setPriceHistory(history);
+
+      // Auto-fill with current price
+      if (history.currentPrice) {
+        setPurchasePrice(history.currentPrice.toFixed(2));
+      }
+    } catch (err) {
+      console.error('Failed to fetch price history:', err);
+    } finally {
+      setLoadingHistory(false);
+    }
+  };
+
+  // Handle clicking on a historical price
+  const handleSelectPrice = (price) => {
+    setPurchasePrice(price.close.toFixed(2));
+  };
 
   const handleAddStock = async (e) => {
     e.preventDefault();
@@ -82,8 +149,9 @@ function Portfolio({ portfolio, setPortfolio }) {
     setShares('');
     setPurchasePrice('');
     setShowAddForm(false);
+    setSelectedStock(null);
+    setPriceHistory(null);
 
-    // Fetch live price for the new stock
     try {
       const data = await fetchStockQuote(upperSymbol);
       setLivePrices(prev => ({ ...prev, [upperSymbol]: data }));
@@ -97,25 +165,44 @@ function Portfolio({ portfolio, setPortfolio }) {
   };
 
   const handleQuickAdd = async (stockSymbol) => {
-    // Fetch live price for quick add
+    setSymbol(stockSymbol);
+    setShowSuggestions(false);
+    setLoadingHistory(true);
+
     try {
-      const price = await fetchStockQuote(stockSymbol);
-      setSymbol(stockSymbol);
-      setPurchasePrice(price.current.toString());
+      const [history, quote] = await Promise.all([
+        fetchHistoricalPrices(stockSymbol, 30),
+        fetchStockQuote(stockSymbol)
+      ]);
+
+      setPriceHistory(history);
+      setSelectedStock({ symbol: stockSymbol, name: quote.name });
+      setPurchasePrice(quote.current.toFixed(2));
       setShares('10');
       setShowAddForm(true);
     } catch (err) {
       const price = getStockPrice(stockSymbol);
-      setSymbol(stockSymbol);
       setPurchasePrice(price.current.toString());
       setShares('10');
       setShowAddForm(true);
+    } finally {
+      setLoadingHistory(false);
     }
   };
 
   const getPrice = (symbol) => {
     const upperSymbol = symbol.toUpperCase();
     return livePrices[upperSymbol] || getStockPrice(symbol);
+  };
+
+  const handleCancelForm = () => {
+    setShowAddForm(false);
+    setSymbol('');
+    setShares('');
+    setPurchasePrice('');
+    setSelectedStock(null);
+    setPriceHistory(null);
+    setError('');
   };
 
   return (
@@ -127,7 +214,7 @@ function Portfolio({ portfolio, setPortfolio }) {
         </div>
         <button
           className="btn btn-primary"
-          onClick={() => setShowAddForm(!showAddForm)}
+          onClick={() => showAddForm ? handleCancelForm() : setShowAddForm(true)}
         >
           {showAddForm ? '✕ CANCEL' : '+ ADD STOCK'}
         </button>
@@ -138,16 +225,34 @@ function Portfolio({ portfolio, setPortfolio }) {
           <h3 className="form-title">ADD NEW STOCK</h3>
           <form onSubmit={handleAddStock}>
             <div className="form-grid">
-              <div className="form-group">
+              <div className="form-group" ref={searchRef}>
                 <label className="label">Stock Symbol</label>
-                <input
-                  type="text"
-                  className="input"
-                  placeholder="e.g., AAPL"
-                  value={symbol}
-                  onChange={(e) => setSymbol(e.target.value.toUpperCase())}
-                  maxLength={5}
-                />
+                <div className="search-wrapper">
+                  <input
+                    type="text"
+                    className="input"
+                    placeholder="Search stocks (e.g., AAPL, Tesla)"
+                    value={symbol}
+                    onChange={(e) => setSymbol(e.target.value.toUpperCase())}
+                    onFocus={() => symbol.length >= 1 && setShowSuggestions(searchResults.length > 0)}
+                    autoComplete="off"
+                  />
+                  {showSuggestions && searchResults.length > 0 && (
+                    <div className="search-suggestions">
+                      {searchResults.map((stock) => (
+                        <div
+                          key={stock.symbol}
+                          className="suggestion-item"
+                          onClick={() => handleSelectStock(stock)}
+                        >
+                          <span className="suggestion-symbol">{stock.symbol}</span>
+                          <span className="suggestion-name">{stock.name}</span>
+                          <span className="suggestion-sector">{stock.sector}</span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
               </div>
               <div className="form-group">
                 <label className="label">Shares</label>
@@ -175,6 +280,89 @@ function Portfolio({ portfolio, setPortfolio }) {
               </div>
             </div>
 
+            {/* Price History Section */}
+            {(loadingHistory || priceHistory) && (
+              <div className="price-history-section">
+                <h4 className="history-title">
+                  {selectedStock ? `${selectedStock.symbol} - Last 30 Days` : 'Price History'}
+                  {priceHistory?.isLive && <span className="live-badge">LIVE</span>}
+                </h4>
+
+                {loadingHistory ? (
+                  <div className="history-loading">
+                    <div className="spinner"></div>
+                    <span>Loading price history...</span>
+                  </div>
+                ) : priceHistory && (
+                  <>
+                    {/* Price Stats */}
+                    <div className="price-stats">
+                      <div className="price-stat">
+                        <span className="stat-label">Current</span>
+                        <span className="stat-value">{formatCurrency(priceHistory.currentPrice)}</span>
+                      </div>
+                      <div className="price-stat">
+                        <span className="stat-label">30D High</span>
+                        <span className="stat-value text-green">{formatCurrency(priceHistory.highPrice)}</span>
+                      </div>
+                      <div className="price-stat">
+                        <span className="stat-label">30D Low</span>
+                        <span className="stat-value text-red">{formatCurrency(priceHistory.lowPrice)}</span>
+                      </div>
+                      <div className="price-stat">
+                        <span className="stat-label">Avg</span>
+                        <span className="stat-value">{formatCurrency(priceHistory.avgPrice)}</span>
+                      </div>
+                    </div>
+
+                    {/* Mini Price Chart */}
+                    <div className="mini-chart">
+                      {priceHistory.prices.slice(-20).map((price, index) => {
+                        const minPrice = priceHistory.lowPrice;
+                        const maxPrice = priceHistory.highPrice;
+                        const range = maxPrice - minPrice || 1;
+                        const heightPercent = ((price.close - minPrice) / range) * 100;
+                        const isSelected = purchasePrice === price.close.toFixed(2);
+
+                        return (
+                          <div
+                            key={index}
+                            className={`chart-bar-mini ${isSelected ? 'selected' : ''}`}
+                            style={{ height: `${Math.max(heightPercent, 5)}%` }}
+                            onClick={() => handleSelectPrice(price)}
+                            title={`${price.dateStr}: ${formatCurrency(price.close)}`}
+                          >
+                            <div className="bar-tooltip">
+                              <div>{price.dateStr}</div>
+                              <div>{formatCurrency(price.close)}</div>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+
+                    {/* Price List */}
+                    <div className="price-list">
+                      <p className="price-list-hint">Click a date to select purchase price:</p>
+                      <div className="price-grid">
+                        {priceHistory.prices.slice(-10).reverse().map((price, index) => (
+                          <button
+                            key={index}
+                            type="button"
+                            className={`price-item ${purchasePrice === price.close.toFixed(2) ? 'selected' : ''}`}
+                            onClick={() => handleSelectPrice(price)}
+                          >
+                            <span className="price-date">{price.dateStr}</span>
+                            <span className="price-value">{formatCurrency(price.close)}</span>
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  </>
+                )}
+              </div>
+            )}
+
             {error && <p className="form-error">{error}</p>}
 
             <div className="form-actions">
@@ -190,6 +378,7 @@ function Portfolio({ portfolio, setPortfolio }) {
               {popularStocks.slice(0, 8).map(stock => (
                 <button
                   key={stock}
+                  type="button"
                   className="btn btn-outline btn-sm"
                   onClick={() => handleQuickAdd(stock)}
                 >
