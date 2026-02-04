@@ -1,0 +1,217 @@
+.portfolio-section {
+  margin-bottom: var(--spacing-xl);
+}
+
+.portfolio-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: var(--spacing-lg);
+}
+
+.section-title {
+  font-size: 1.5rem;
+  font-weight: 900;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+}
+
+/* Add Stock Form */
+.add-stock-form {
+  margin-bottom: var(--spacing-lg);
+  background-color: var(--color-white);
+}
+
+.form-title {
+  font-size: 1rem;
+  font-weight: 900;
+  letter-spacing: 1px;
+  margin-bottom: var(--spacing-md);
+  padding-bottom: var(--spacing-sm);
+  border-bottom: var(--border-medium);
+}
+
+.form-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: var(--spacing-md);
+  margin-bottom: var(--spacing-md);
+}
+
+.form-group {
+  display: flex;
+  flex-direction: column;
+}
+
+.form-error {
+  color: var(--color-red);
+  font-weight: 700;
+  margin-bottom: var(--spacing-md);
+  padding: var(--spacing-sm);
+  background-color: #ffebeb;
+  border: 3px solid var(--color-red);
+}
+
+.form-actions {
+  display: flex;
+  gap: var(--spacing-md);
+}
+
+.quick-add {
+  margin-top: var(--spacing-lg);
+  padding-top: var(--spacing-md);
+  border-top: var(--border-thin);
+}
+
+.quick-add-label {
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 1px;
+  margin-bottom: var(--spacing-sm);
+  color: #666;
+}
+
+.quick-add-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--spacing-xs);
+}
+
+/* Empty State */
+.portfolio-empty {
+  text-align: center;
+  padding: var(--spacing-xxl);
+}
+
+.empty-icon {
+  font-size: 4rem;
+  margin-bottom: var(--spacing-md);
+}
+
+.portfolio-empty h3 {
+  font-size: 1.5rem;
+  font-weight: 900;
+  margin-bottom: var(--spacing-sm);
+}
+
+.portfolio-empty p {
+  color: #666;
+  margin-bottom: var(--spacing-lg);
+}
+
+/* Portfolio Grid */
+.portfolio-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: var(--spacing-lg);
+}
+
+/* Stock Card */
+.stock-card {
+  position: relative;
+}
+
+.stock-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: var(--spacing-xs);
+}
+
+.stock-symbol {
+  font-size: 1.5rem;
+  font-weight: 900;
+  letter-spacing: 2px;
+}
+
+.remove-btn {
+  background: none;
+  border: none;
+  font-size: 1.25rem;
+  cursor: pointer;
+  color: #999;
+  padding: 0;
+  line-height: 1;
+  transition: color 0.15s ease;
+}
+
+.remove-btn:hover {
+  color: var(--color-red);
+}
+
+.stock-name {
+  font-size: 0.875rem;
+  color: #666;
+  margin-bottom: var(--spacing-md);
+}
+
+.stock-details {
+  border-top: var(--border-thin);
+  border-bottom: var(--border-thin);
+  padding: var(--spacing-sm) 0;
+  margin-bottom: var(--spacing-md);
+}
+
+.stock-row {
+  display: flex;
+  justify-content: space-between;
+  padding: var(--spacing-xs) 0;
+}
+
+.stock-label {
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: #666;
+}
+
+.stock-value {
+  font-weight: 700;
+}
+
+.stock-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+}
+
+.value-current {
+  font-size: 1.25rem;
+  font-weight: 900;
+}
+
+.stock-gain-loss {
+  text-align: right;
+}
+
+.stock-gain-loss.positive {
+  color: var(--color-green);
+}
+
+.stock-gain-loss.negative {
+  color: var(--color-red);
+}
+
+.gain-loss-amount {
+  display: block;
+  font-size: 1rem;
+  font-weight: 700;
+}
+
+.gain-loss-percent {
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+@media (max-width: 768px) {
+  .form-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .portfolio-header {
+    flex-direction: column;
+    align-items: stretch;
+    gap: var(--spacing-md);
+  }
+}

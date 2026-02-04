@@ -1,0 +1,175 @@
+.insights-section {
+  margin-bottom: var(--spacing-xl);
+}
+
+.insights-highlights {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: var(--spacing-lg);
+  margin-bottom: var(--spacing-xl);
+}
+
+.highlight-card {
+  position: relative;
+  padding: var(--spacing-xl);
+  text-align: center;
+  transition: all 0.2s ease;
+}
+
+.highlight-card:hover {
+  transform: translate(-4px, -4px);
+  box-shadow: var(--shadow-brutal);
+}
+
+.highlight-card.best {
+  border-color: var(--color-green);
+  background: linear-gradient(135deg, #f0fff0 0%, #ffffff 100%);
+}
+
+.highlight-card.worst {
+  border-color: var(--color-red);
+  background: linear-gradient(135deg, #fff0f0 0%, #ffffff 100%);
+}
+
+.highlight-badge {
+  display: inline-block;
+  padding: var(--spacing-xs) var(--spacing-md);
+  font-size: 0.75rem;
+  font-weight: 900;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  margin-bottom: var(--spacing-md);
+}
+
+.highlight-card.best .highlight-badge {
+  background-color: var(--color-green);
+  color: var(--color-black);
+  border: 3px solid var(--color-black);
+}
+
+.highlight-card.worst .highlight-badge {
+  background-color: var(--color-red);
+  color: var(--color-white);
+  border: 3px solid var(--color-black);
+}
+
+.highlight-date {
+  font-size: 1.5rem;
+  font-weight: 900;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  margin-bottom: var(--spacing-sm);
+}
+
+.highlight-change {
+  font-size: 2.5rem;
+  font-weight: 900;
+  margin-bottom: var(--spacing-sm);
+}
+
+.highlight-change.positive {
+  color: var(--color-green);
+}
+
+.highlight-change.negative {
+  color: var(--color-red);
+}
+
+.highlight-value {
+  font-size: 0.875rem;
+  color: #666;
+  margin-bottom: var(--spacing-xs);
+}
+
+.highlight-amount {
+  font-size: 1.125rem;
+  font-weight: 700;
+}
+
+.highlight-amount.positive {
+  color: var(--color-green);
+}
+
+.highlight-amount.negative {
+  color: var(--color-red);
+}
+
+/* Monthly Breakdown */
+.monthly-breakdown {
+  margin-top: var(--spacing-xl);
+}
+
+.breakdown-title {
+  font-size: 1rem;
+  font-weight: 900;
+  letter-spacing: 1px;
+  margin-bottom: var(--spacing-lg);
+  padding-bottom: var(--spacing-sm);
+  border-bottom: var(--border-medium);
+}
+
+.breakdown-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: var(--spacing-md);
+}
+
+.month-card {
+  padding: var(--spacing-md);
+  position: relative;
+  overflow: hidden;
+}
+
+.month-card.positive {
+  border-left: 6px solid var(--color-green);
+}
+
+.month-card.negative {
+  border-left: 6px solid var(--color-red);
+}
+
+.month-date {
+  font-size: 0.875rem;
+  font-weight: 900;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  margin-bottom: var(--spacing-xs);
+}
+
+.month-value {
+  font-size: 1.125rem;
+  font-weight: 700;
+  margin-bottom: var(--spacing-xs);
+}
+
+.month-change {
+  font-size: 1rem;
+  font-weight: 900;
+}
+
+.month-amount {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: #666;
+  margin-top: var(--spacing-xs);
+}
+
+@media (max-width: 768px) {
+  .insights-highlights {
+    grid-template-columns: 1fr;
+  }
+
+  .highlight-change {
+    font-size: 2rem;
+  }
+
+  .breakdown-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 480px) {
+  .breakdown-grid {
+    grid-template-columns: 1fr;
+  }
+}
