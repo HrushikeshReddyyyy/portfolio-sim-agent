@@ -4,9 +4,21 @@
 
 Track, analyze, and optimize your stock investments with artificial intelligence. Beautiful interactive charts, powerful timing insights, and strategic recommendations.
 
-![License](https://img.shields.io/badge/license-MIT-black)
-![React](https://img.shields.io/badge/React-18-blue)
-![Bundle Size](https://img.shields.io/badge/bundle-~60KB_gzipped-green)
+[![Live Demo](https://img.shields.io/badge/Live_Demo-GitHub_Pages-gold?style=for-the-badge)](https://hrushikeshreddyyyy.github.io/portfolio-sim-agent/)
+[![License](https://img.shields.io/badge/license-MIT-black)](LICENSE)
+[![React](https://img.shields.io/badge/React-18-blue)](https://react.dev)
+[![Bundle Size](https://img.shields.io/badge/bundle-~60KB_gzipped-green)](#tech-stack)
+
+---
+
+## Live Demo
+
+**[https://hrushikeshreddyyyy.github.io/portfolio-sim-agent/](https://hrushikeshreddyyyy.github.io/portfolio-sim-agent/)**
+
+Try the app with sample data or add your own stocks to see:
+- Interactive charts with gold hover effects
+- AI-powered portfolio analysis
+- Performance timing insights
 
 ---
 
@@ -89,6 +101,17 @@ The built files will be in the `dist/` directory.
 
 ### Deploy to GitHub Pages
 
+This project includes a GitHub Actions workflow for automatic deployment.
+
+**Automatic Deployment (Recommended):**
+
+1. Push your code to the `main` branch
+2. Go to your repository Settings > Pages
+3. Under "Build and deployment", select "GitHub Actions"
+4. The workflow will automatically build and deploy on every push
+
+**Manual Deployment:**
+
 ```bash
 # Build the project
 npm run build
@@ -98,6 +121,11 @@ npm run build
 # - Netlify
 # - Vercel
 # - Any static file server
+```
+
+**Your live site will be available at:**
+```
+https://<username>.github.io/portfolio-sim-agent/
 ```
 
 ---
