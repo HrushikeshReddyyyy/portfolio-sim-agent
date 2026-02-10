@@ -25,10 +25,14 @@ Try the app with sample data or add your own stocks to see:
 ## Features
 
 ### Portfolio Tracking
-- Add unlimited stocks (symbol, shares, purchase price)
+- Add stocks with symbol, shares, and purchase price
 - Real-time gain/loss calculations
 - Beautiful card-based visual display
 - Quick-add buttons for popular stocks
+- Stock search with autocomplete suggestions
+- 30-day price history with mini chart
+- **In Development**: Unlimited stocks support (currently limited)
+- **In Development**: Portfolio value aggregation improvements
 
 ### Interactive Performance Chart
 - 24 months of historical performance
@@ -56,6 +60,12 @@ Try the app with sample data or add your own stocks to see:
 - Suggests 3 stocks to buy
 - Each pick includes reasoning
 - One-click add to portfolio
+
+### Real-Time Stock Data
+- Finnhub API integration for live prices
+- "LIVE" badge indicates real-time data
+- Automatic fallback to mock data if API unavailable
+- 60-second price caching to minimize API calls
 
 ---
 
@@ -219,14 +229,16 @@ Diversification score, risk assessment, sector breakdown, and recommendations.
 
 ---
 
-## API Integration (Future)
+## API Integration
 
-The current version uses mock data. For production, integrate with:
+### Currently Integrated
+- **Stock Prices**: Finnhub API (real-time quotes, historical data, company profiles)
 
-- **Stock Prices**: Alpha Vantage, Yahoo Finance, or Finnhub
-- **AI Analysis**: OpenAI GPT-4 or Claude API
-- **Payments**: Stripe or PayPal
-- **Auth**: Firebase Auth or Auth0
+### Future Integrations (In Development)
+- **AI Analysis**: OpenAI GPT-4 or Claude API for smarter recommendations
+- **Payments**: Stripe or PayPal for Premium subscriptions
+- **Auth**: Firebase Auth or Auth0 for user accounts
+- **Portfolio Sync**: Cloud storage for multi-device access
 
 ---
 
