@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import {
   getStockPrice,
   fetchStockQuote,
@@ -8,6 +8,21 @@ import {
   popularStocks
 } from '../utils/stockData';
 import './Portfolio.css';
+
+// Debounce hook for search optimization
+function useDebounce(value, delay) {
+  const [debouncedValue, setDebouncedValue] = useState(value);
+
+  useEffect(() => {
+    const handler = setTimeout(() => {
+      setDebouncedValue(value);
+    }, delay);
+
+    return () => clearTimeout(handler);
+  }, [value, delay]);
+
+  return debouncedValue;
+}
 
 function Portfolio({ portfolio, setPortfolio }) {
   const [showAddForm, setShowAddForm] = useState(false);
@@ -24,8 +39,10 @@ function Portfolio({ portfolio, setPortfolio }) {
   const [selectedStock, setSelectedStock] = useState(null);
   const [priceHistory, setPriceHistory] = useState(null);
   const [loadingHistory, setLoadingHistory] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const searchRef = useRef(null);
+  const debouncedSymbol = useDebounce(symbol, 200); // 200ms debounce for search
 
   // Close suggestions when clicking outside
   useEffect(() => {
@@ -39,48 +56,70 @@ function Portfolio({ portfolio, setPortfolio }) {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  // Fetch live prices when portfolio changes
+  // Fetch live prices when portfolio changes - PARALLEL fetching
   useEffect(() => {
     if (portfolio.length === 0) return;
 
+    let isMounted = true;
+
     const fetchLivePrices = async () => {
       setLoading(true);
-      const prices = {};
 
-      for (const stock of portfolio) {
-        try {
-          const data = await fetchStockQuote(stock.symbol);
-          prices[stock.symbol.toUpperCase()] = data;
-        } catch (err) {
-          console.warn(`Failed to fetch ${stock.symbol}:`, err);
-          prices[stock.symbol.toUpperCase()] = getStockPrice(stock.symbol);
+      try {
+        // Fetch all prices in PARALLEL instead of sequential
+        const promises = portfolio.map(async (stock) => {
+          try {
+            const data = await fetchStockQuote(stock.symbol);
+            return { symbol: stock.symbol.toUpperCase(), data };
+          } catch (err) {
+            console.warn(`Failed to fetch ${stock.symbol}:`, err);
+            return { symbol: stock.symbol.toUpperCase(), data: getStockPrice(stock.symbol) };
+          }
+        });
+
+        const results = await Promise.all(promises);
+
+        if (isMounted) {
+          const prices = {};
+          results.forEach(({ symbol, data }) => {
+            prices[symbol] = data;
+          });
+          setLivePrices(prices);
+        }
+      } catch (err) {
+        console.error('Failed to fetch prices:', err);
+      } finally {
+        if (isMounted) {
+          setLoading(false);
         }
       }
-
-      setLivePrices(prices);
-      setLoading(false);
     };
 
     fetchLivePrices();
 
     const interval = setInterval(fetchLivePrices, 60000);
-    return () => clearInterval(interval);
+    return () => {
+      isMounted = false;
+      clearInterval(interval);
+    };
   }, [portfolio.length]);
 
-  // Search stocks when symbol changes
+  // Search stocks when debounced symbol changes (prevents lag)
   useEffect(() => {
-    if (symbol.length >= 1) {
-      const results = searchStocks(symbol);
+    if (debouncedSymbol.length >= 1) {
+      const results = searchStocks(debouncedSymbol);
       setSearchResults(results);
       setShowSuggestions(results.length > 0);
     } else {
       setSearchResults([]);
       setShowSuggestions(false);
     }
-  }, [symbol]);
+  }, [debouncedSymbol]);
 
-  // Handle stock selection from suggestions
-  const handleSelectStock = async (stock) => {
+  // Handle stock selection from suggestions - memoized for performance
+  const handleSelectStock = useCallback(async (stock) => {
+    if (loadingHistory) return; // Prevent double-clicks
+
     setSymbol(stock.symbol);
     setSelectedStock(stock);
     setShowSuggestions(false);
@@ -100,26 +139,33 @@ function Portfolio({ portfolio, setPortfolio }) {
     } finally {
       setLoadingHistory(false);
     }
-  };
+  }, [loadingHistory]);
 
-  // Handle clicking on a historical price
-  const handleSelectPrice = (price) => {
+  // Handle clicking on a historical price - memoized
+  const handleSelectPrice = useCallback((price) => {
     setPurchasePrice(price.close.toFixed(2));
-  };
+  }, []);
 
-  const handleAddStock = async (e) => {
+  const handleAddStock = useCallback(async (e) => {
     e.preventDefault();
+    e.stopPropagation();
+
+    if (isSubmitting) return; // Prevent double submission
+
     setError('');
+    setIsSubmitting(true);
 
     const upperSymbol = symbol.toUpperCase().trim();
 
     if (!upperSymbol || !shares || !purchasePrice) {
       setError('Please fill in all fields');
+      setIsSubmitting(false);
       return;
     }
 
     if (portfolio.some(s => s.symbol.toUpperCase() === upperSymbol)) {
       setError('Stock already in portfolio');
+      setIsSubmitting(false);
       return;
     }
 
@@ -128,11 +174,13 @@ function Portfolio({ portfolio, setPortfolio }) {
 
     if (isNaN(sharesNum) || sharesNum <= 0) {
       setError('Invalid number of shares');
+      setIsSubmitting(false);
       return;
     }
 
     if (isNaN(priceNum) || priceNum <= 0) {
       setError('Invalid purchase price');
+      setIsSubmitting(false);
       return;
     }
 
@@ -151,23 +199,29 @@ function Portfolio({ portfolio, setPortfolio }) {
     setShowAddForm(false);
     setSelectedStock(null);
     setPriceHistory(null);
+    setIsSubmitting(false);
 
-    try {
-      const data = await fetchStockQuote(upperSymbol);
-      setLivePrices(prev => ({ ...prev, [upperSymbol]: data }));
-    } catch (err) {
-      console.warn(`Failed to fetch ${upperSymbol}:`, err);
-    }
-  };
+    // Fetch live price in background (non-blocking)
+    fetchStockQuote(upperSymbol)
+      .then(data => {
+        setLivePrices(prev => ({ ...prev, [upperSymbol]: data }));
+      })
+      .catch(err => {
+        console.warn(`Failed to fetch ${upperSymbol}:`, err);
+      });
+  }, [symbol, shares, purchasePrice, portfolio, setPortfolio, isSubmitting]);
 
-  const handleRemoveStock = (id) => {
-    setPortfolio(portfolio.filter(s => s.id !== id));
-  };
+  const handleRemoveStock = useCallback((id) => {
+    setPortfolio(prev => prev.filter(s => s.id !== id));
+  }, [setPortfolio]);
 
-  const handleQuickAdd = async (stockSymbol) => {
+  const handleQuickAdd = useCallback(async (stockSymbol) => {
+    if (loadingHistory) return; // Prevent double-clicks
+
     setSymbol(stockSymbol);
     setShowSuggestions(false);
     setLoadingHistory(true);
+    setShowAddForm(true);
 
     try {
       const [history, quote] = await Promise.all([
@@ -179,23 +233,22 @@ function Portfolio({ portfolio, setPortfolio }) {
       setSelectedStock({ symbol: stockSymbol, name: quote.name });
       setPurchasePrice(quote.current.toFixed(2));
       setShares('10');
-      setShowAddForm(true);
     } catch (err) {
       const price = getStockPrice(stockSymbol);
       setPurchasePrice(price.current.toString());
       setShares('10');
-      setShowAddForm(true);
     } finally {
       setLoadingHistory(false);
     }
-  };
+  }, [loadingHistory]);
 
-  const getPrice = (symbol) => {
+  // Memoized price getter
+  const getPrice = useCallback((symbol) => {
     const upperSymbol = symbol.toUpperCase();
     return livePrices[upperSymbol] || getStockPrice(symbol);
-  };
+  }, [livePrices]);
 
-  const handleCancelForm = () => {
+  const handleCancelForm = useCallback(() => {
     setShowAddForm(false);
     setSymbol('');
     setShares('');
@@ -203,7 +256,8 @@ function Portfolio({ portfolio, setPortfolio }) {
     setSelectedStock(null);
     setPriceHistory(null);
     setError('');
-  };
+    setIsSubmitting(false);
+  }, []);
 
   return (
     <div className="portfolio-section">
@@ -366,8 +420,12 @@ function Portfolio({ portfolio, setPortfolio }) {
             {error && <p className="form-error">{error}</p>}
 
             <div className="form-actions">
-              <button type="submit" className="btn btn-success">
-                ADD TO PORTFOLIO
+              <button
+                type="submit"
+                className={`btn btn-success ${isSubmitting ? 'btn-loading' : ''}`}
+                disabled={isSubmitting}
+              >
+                {isSubmitting ? 'ADDING...' : 'ADD TO PORTFOLIO'}
               </button>
             </div>
           </form>

@@ -79,6 +79,18 @@ body {
   box-shadow: none;
 }
 
+.btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
+}
+
+.btn:disabled:hover {
+  transform: none;
+  box-shadow: none;
+}
+
 .btn-primary {
   background-color: var(--color-black);
   color: var(--color-white);
